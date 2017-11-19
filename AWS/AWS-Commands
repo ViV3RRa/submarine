@@ -1,0 +1,52 @@
+SUBMARINE
+
+CRETAE NEW LAMBDA FUNCTION:
+	aws lambda create-function 
+		--region eu-central-1 
+		--function-name updateProductsFromReceiptsDBStram 
+		--zip-file fileb://updateProductsFromReceiptsDBStram.zip 
+		--role arn:aws:iam::879112026985:role/lambda-dynamodb-execution-role 
+		--handler updateProductsFromReceiptsDBStram.lambda_handler 
+		--runtime python2.7 
+		--profile submarine
+
+
+UPDATE LAMBDA FUNCTION:
+	aws lambda update-function-code 
+		--region eu-central-1 
+		--function-name getReceiptsFromStoreBox 
+		--zip-file getReceiptsFromStoreBox.zip 
+		--profile submarine
+
+
+INVOKE LAMBDA FUNCTION MANUALLY:
+	aws lambda invoke 
+		--invocation-type RequestResponse 
+		--function-name updateProductsFromReceiptsDBStram 
+		--region eu-central-1 
+		--payload file://input.txt 
+		--profile submarine 
+		outputfile.txt
+
+
+CREATE EVENT SOURCE MAPPING:
+	aws lambda create-event-source-mapping 
+		--region eu-central-1 
+		--function-name updateProductsFromReceiptsDBStram 
+		--event-source arn:aws:dynamodb:eu-central-1:879112026985:table/receipts/stream/2017-11-19T13:20:27.391 
+		--batch-size 100 
+		--starting-position TRIM_HORIZON 
+		--profile submarine
+
+
+LIST EVENT SOURCE MAPPINGS:
+	aws lambda list-event-source-mappings 
+		--region eu-central-1 
+		--function-name updateProductsFromReceiptsDBStram 
+		--event-source arn:aws:dynamodb:eu-central-1:879112026985:table/receipts/stream/2017-11-19T13:20:27.391 
+		--profile submarine
+
+
+DELETE EVENT SOURCE MAPPING:
+	delete-event-source-mapping 
+		--uuid 2154200a-de59-4ffe-8abd-ec818183e565
