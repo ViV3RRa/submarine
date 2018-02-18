@@ -5,7 +5,7 @@ import json
 
 dynamodb = boto3.resource('dynamodb')
 receipt_table = dynamodb.Table('receipts')
-products_table = dynamodb.Table('products')
+descriptions_table = dynamodb.Table('product_descriptions')
 
 INSERT = 'INSERT'
 
@@ -14,14 +14,14 @@ new_products = []
 
 
 def get_all_products_from_dynamodb():
-    print('Getting all existing products from table "products"')
-    response = products_table.scan()
+    print('Getting all existing products from table "product_descriptions"')
+    response = descriptions_table.scan()
     
     items = response['Items']
     while True:
         if response.get('LastEvaluatedKey'):
             print('Paginating the result set...')
-            response = products_table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+            response = descriptions_table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
             items += response['Items']
         else:
             break
@@ -43,28 +43,28 @@ def get_list_of_existing_eans():
 def add_missing_products(record):
     global new_products
     
-    receiptID = record['dynamodb']['Keys']['receiptID']['S']
-    receipt = json.loads(get_receipt(receiptID))
-    receiptLines = receipt['receiptLines']
+    receipt_id = record['dynamodb']['Keys']['receiptID']['S']
+    receipt = json.loads(get_receipt(receipt_id))
+    receipt_lines = receipt['receiptLines']
     
-    for line in receiptLines:
-        productNumber = line['productNumber']
-        productName = line['name']
+    for line in receipt_lines:
+        product_number = line['productNumber']
+        product_name = line['name']
         
-        if productNumber is not None:
-            if productNumber not in new_products and productNumber not in list_of_existing_eans:
-                new_products.append(productNumber)
-                add_product(productNumber, productName)
+        if product_number is not None:
+            if product_number not in new_products and product_number not in list_of_existing_eans:
+                new_products.append(product_number)
+                add_product(product_number, product_name)
             else:
-                print('Product with EAN: ' + productNumber + ' already registered...')
+                print('Product with EAN: ' + product_number + ' already registered...')
     return
     
 
-def get_receipt(receiptID):
-    print('Getting receipt with receiptID: ' + receiptID)
+def get_receipt(receipt_id):
+    print('Getting receipt with receiptID: ' + receipt_id)
     response = receipt_table.get_item(
         Key={
-            'receiptID': receiptID
+            'receiptID': receipt_id
         }
     )
     
@@ -72,23 +72,23 @@ def get_receipt(receiptID):
     
 
 def add_product(ean, name):
-    print('Inserting product with EAN: ' + str(ean) + ' and Name: ' + name + ' into table "products"')
-    products_table.put_item(
+    print('Inserting product with EAN: ' + str(ean) + ' and Name: ' + name + ' into table "product_descriptions"')
+    descriptions_table.put_item(
             Item={
                 'ean': ean,
                 'insert_time': int(time.time() * 1000),
                 'name': name,
-                'tags': '{"tags": []}'
+                'tag': '-'
             }
         )
     
 
 def lambda_handler(event, context):
-    print('Updating list of products in table "products" at {}'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())))
+    print('Updating list of products in table "product_descriptions" at {}'.format(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())))
     try:
         global list_of_existing_eans
         list_of_existing_eans = get_list_of_existing_eans()
-        print('Currently ' + str(len(list_of_existing_eans)) + ' products in table "products"...')
+        print('Currently ' + str(len(list_of_existing_eans)) + ' products in table "product_descriptions"...')
         
         for record in event['Records']:
             print(str(record['eventName']) + ' receipt with receiptID: ' + record['dynamodb']['Keys']['receiptID']['S'])
@@ -101,5 +101,5 @@ def lambda_handler(event, context):
         print('Successfully processed %s records.' % str(len(event['Records'])))
         
     except:
-        print("Failed updating products with error: " + str(sys.exc_info()))
-        raise Exception('ERROR!!! Failed to update products!')
+        print("Failed updating product_descriptions with error: " + str(sys.exc_info()))
+        raise Exception('ERROR!!! Failed to update product_descriptions!')

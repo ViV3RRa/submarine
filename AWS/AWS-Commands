@@ -15,7 +15,7 @@ UPDATE LAMBDA FUNCTION:
 	aws lambda update-function-code 
 		--region eu-central-1 
 		--function-name getReceiptsFromStoreBox 
-		--zip-file getReceiptsFromStoreBox.zip 
+		--zip-file fileb://getReceiptsFromStoreBox.zip 
 		--profile submarine
 
 
