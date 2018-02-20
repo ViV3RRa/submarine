@@ -7,6 +7,9 @@ import json
 import uuid
 from decimal import *
 
+sns = boto3.client('sns')
+topic_arn = 'arn:aws:sns:eu-central-1:879112026985:newDataInDatabases'
+
 dynamodb = boto3.resource('dynamodb')
 receipt_table = dynamodb.Table('receipts')
 product_descriptions_table = dynamodb.Table('product_descriptions')
@@ -15,7 +18,6 @@ products_table = dynamodb.Table('products')
 INSERT = 'INSERT'
 
 product_descriptions = []
-
 
 def get_product_descriptions():
     print('Getting all product_descriptions from table "product_descriptions"')
@@ -122,6 +124,15 @@ def put_product(product):
                 'discount_amount': Decimal(str(product['discount_amount']))
             }
         )
+
+
+def publish_to_sns_topic():
+    print('Publishing to SNS Topic...')
+    sns.publish(
+        TopicArn=topic_arn,
+        Message='{\"default\": \"default_body\", \"GCM\": \"{ \\"data\\": { \\"action\\": \\"product_items\\" } }\"}',
+        MessageStructure='json'
+    )
     
 
 def lambda_handler(event, context):
@@ -129,14 +140,20 @@ def lambda_handler(event, context):
     try:
         global product_descriptions
         product_descriptions = get_product_descriptions()
+
+        inserts = 0
         
         for record in event['Records']:
             print(str(record['eventName']) + ' receipt with receiptID: ' + record['dynamodb']['Keys']['receiptID']['S'])
             
             if record['eventName'] == INSERT:
                 add_products(record)
+                inserts += 1
             else:
                 print('Ignoring event ' + record['eventName'])
+
+        if inserts > 0:
+            publish_to_sns_topic()
        
         print('Successfully processed %s records.' % str(len(event['Records'])))
         
